@@ -1,0 +1,10 @@
+[Unit]
+Description=SS5-Forward
+
+[Service]
+TimeoutStartSec=0
+ExecStart=/usr/local/bin/ss5-forward -c /root/proxy/.ss5-forward.json
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

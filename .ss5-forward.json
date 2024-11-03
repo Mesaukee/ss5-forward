@@ -1,0 +1,8 @@
+{
+  "listen_addr": "0.0.0.0:443",
+  "target_addr": "0.0.0.0:445",
+  "server_key": "/etc/server.key",
+  "server_pem": "/etc/server.pem",
+  "client_key": "/etc/client.key",
+  "client_pem": "/etc/client.pem"
+}
