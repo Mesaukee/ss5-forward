@@ -15,15 +15,16 @@ import (
 	"time"
 )
 
-/* The buffer (6M) is used after successful authentication between the connections. */
-const ConnectionBuffer = 1024 * 1024 * 6
+/* The buffer (1M) is used after successful authentication between the connections. */
+const ConnectionBuffer = 1024 * 1024 * 1
 
-/* The buffer (256 KB) is used for parsing SOCKS5. */
-const Socks5Buffer = 256 * 1024
+/* The buffer (128KB) is used for parsing the SOCKS5 protocol. */
+const Socks5Buffer = 128 * 1024
 
 var bytePool = sync.Pool{
 	New: func() interface{} {
 		bytes := make([]byte, ConnectionBuffer)
+
 		return bytes
 	},
 }
@@ -63,11 +64,14 @@ func (s *Service) TLSWrite(conn net.Conn, buf []byte) error {
 }
 
 func (s *Service) TransferToTCP(cliConn net.Conn, dstConn *net.TCPConn) error {
-	buf := make([]byte, ConnectionBuffer)
+	buf := bytePool.Get().([]byte)
+
 	for {
 		nRead, errRead := cliConn.Read(buf)
 
 		if errRead != nil {
+			bytePool.Put(buf)
+
 			return errRead
 		}
 
@@ -75,6 +79,8 @@ func (s *Service) TransferToTCP(cliConn net.Conn, dstConn *net.TCPConn) error {
 			_, errWrite := dstConn.Write(buf[0:nRead])
 
 			if errWrite != nil {
+				bytePool.Put(buf)
+
 				return errWrite
 			}
 		}
@@ -170,6 +176,7 @@ func (s *Service) ParseSOCKS5FromTLS(cliConn net.Conn) (*net.TCPAddr, error) {
 			if err != nil {
 				return &net.TCPAddr{}, errors.New("the service failed to parse the domain name")
 			}
+
 			dstIP = ipAddr.IP
 		case 0x04: /* The version-6 IP address. */
 			dstIP = buf[4 : 4+net.IPv6len]
@@ -291,6 +298,7 @@ func (s *server) ListenTLS() error {
 	}
 
 	serverCertPool := x509.NewCertPool()
+
 	/* Try to attempt to parse the PEM encoded certificates. */
 	ok := serverCertPool.AppendCertsFromPEM(serverCertBytes)
 	if !ok {
